@@ -1,48 +1,63 @@
 #!/bin/bash
 
-# Run only on first execution
 SETUP_FLAG="./.sub-recon_ran_already"
 
+# ── Loading Bar ───────────────────────────────────────────────────────────────
+loading_bar() {
+    local label="$1"
+    local pid="$2"
+    local width=40
+    local i=0
+
+    printf "  %-20s\n  [" "$label"
+    while kill -0 "$pid" 2>/dev/null; do
+        if [ $i -lt $width ]; then
+            printf "#"
+            i=$((i + 1))
+        fi
+        sleep 0.3
+    done
+    # Fill remaining if process finished before bar filled
+    while [ $i -lt $width ]; do
+        printf "#"
+        i=$((i + 1))
+    done
+    printf "] done\n"
+}
+
+# ── Run only on first execution ───────────────────────────────────────────────
 if [ ! -f "$SETUP_FLAG" ]; then
     echo "First run detected. Running initial setup..."
+    echo ""
 
     install_go() {
         if command -v go >/dev/null 2>&1; then
-            echo "go already present. Skipping..."
+            echo "  Go-Lib              Already present. Skipping..."
         else
-            echo "Go not found. Installing..."
-
-            # Debian/Ubuntu
             if command -v apt >/dev/null 2>&1; then
-                sudo apt update
-                sudo apt install -y golang-go
-
-            # Fedora/RHEL
+                (sudo apt update -qq && sudo apt install -y golang-go -qq) > /dev/null 2>&1 &
             elif command -v dnf >/dev/null 2>&1; then
-                sudo dnf install -y golang
-
-            # Arch
+                (sudo dnf install -y golang -q) > /dev/null 2>&1 &
             elif command -v pacman >/dev/null 2>&1; then
-                sudo pacman -Sy --noconfirm go
-
-            # macOS (Homebrew)
+                (sudo pacman -Sy --noconfirm go) > /dev/null 2>&1 &
             elif command -v brew >/dev/null 2>&1; then
-                brew install go
-
+                (brew install go) > /dev/null 2>&1 &
             else
                 echo "Unsupported package manager. Install Go manually."
                 exit 1
             fi
 
+            loading_bar "installing go" $!
+            wait
+
             if command -v go >/dev/null 2>&1; then
-                echo "go installed..."
+                echo "  go                   Installed successfully."
             else
-                echo "Go installation failed."
+                echo "  go                   Installation failed. Aborting."
                 exit 1
             fi
         fi
 
-        # Ensure Go binaries are accessible
         export PATH="$PATH:$HOME/go/bin"
     }
 
@@ -50,45 +65,51 @@ if [ ! -f "$SETUP_FLAG" ]; then
         local tool="$1"
 
         if command -v "$tool" >/dev/null 2>&1; then
-            echo "$tool already present. Skipping..."
+            echo "  $tool$(printf '%*s' $((20 - ${#tool})) '')Already present. Skipping..."
+            return 0
+        fi
+
+        case "$tool" in
+            subfinder)
+                go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest > /dev/null 2>&1 &
+                ;;
+            assetfinder)
+                go install github.com/tomnomnom/assetfinder@latest > /dev/null 2>&1 &
+                ;;
+            sublist3r)
+                sudo apt install -y sublist3r -qq > /dev/null 2>&1 &
+                ;;
+            *)
+                echo "Unknown tool: $tool"
+                return 1
+                ;;
+        esac
+
+        loading_bar "Installing $tool" $!
+        wait
+        hash -r
+
+        if command -v "$tool" >/dev/null 2>&1; then
+            echo "  $tool$(printf '%*s' $((20 - ${#tool})) '')installed successfully."
         else
-            case "$tool" in
-                subfinder)
-                    go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-                    ;;
-                assetfinder)
-                    go install github.com/tomnomnom/assetfinder@latest
-                    ;;
-                sublist3r)
-                    sudo apt install -y sublist3r
-                    ;;
-                *)
-                    echo "Unknown tool: $tool"
-                    return 1
-                    ;;
-            esac
-
-            hash -r
-
-            if command -v "$tool" >/dev/null 2>&1; then
-                echo "$tool installed..."
-            else
-                echo "Failed to install $tool"
-            fi
+            echo "  $tool$(printf '%*s' $((20 - ${#tool})) '')installation failed."
         fi
     }
 
     # Install Go first
     install_go
 
+    echo ""
+
     # Install required tools
     for tool in subfinder assetfinder sublist3r; do
         install_tool "$tool"
     done
 
-    # Create setup marker
     touch "$SETUP_FLAG"
+    echo ""
     echo "Initial setup complete."
+    echo ""
 
 else
     echo "Setup already completed. Skipping installation checks."
@@ -99,6 +120,21 @@ fi
 # Usage: ./sub_recon.sh -u "example.com"
 # Tools required: subfinder, assetfinder, sublist3r
 # =============================================================================
+
+print_banner() {
+    echo -e "\033[1;36m"
+    echo '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+    echo '  _________    ___.            __________                             '
+    echo '  /   _____/__ _\_ |__          \______   \ ____   ____  ____   ____  '
+    echo '  \_____  \|  |  \ __ \   ______ |       _// __ \_/ ___\/  _ \ /    \ '
+    echo '  /        \  |  / \_\ \ /_____/ |    |   \  ___/\  \__(  <_> )   |  \'
+    echo ' /_______  /____/|___  /         |____|_  /\___  >\___  >____/|___|  /'
+    echo '         \/          \/                  \/     \/     \/           \/ '
+    echo '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+    echo -e "\033[0m"
+}
+
+print_banner
 
 # ── Argument Parsing ──────────────────────────────────────────────────────────
 
