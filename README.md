@@ -3,7 +3,7 @@
 This tool was devised as something that I think would be beneficial for a lot of Beginners starting out. This is just a basic script that aids in the initial 
 phases of Reconnaissance that a Security Researcher has to perform:- to `Map out all the subdomains for a wildcard.`
 
-![Tool Banner](/Sub-recon.png)
+![Tool Banner](/Sub_Recon.png)
 
 ### How to Use? 
 - Download the script, and give it executable permission using this command: `sudo chmod +x sub_recon.sh`
