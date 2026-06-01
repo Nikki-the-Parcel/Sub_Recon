@@ -252,6 +252,17 @@ echo "   Saved to : $OUTPUT_FILE"
 echo "============================================="
 echo ""
 
+# ── HTTP Status Check ─────────────────────────────────────────────────────────
+# Hand the freshly-collected subdomains to status_check.sh, which visits each
+# host and reports its HTTP response code (200 / 301 / 404 / 503 / ...).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/status_check.sh" ]; then
+    bash "$SCRIPT_DIR/status_check.sh" "$OUTPUT_FILE"
+else
+    echo "[!] status_check.sh not found in $SCRIPT_DIR - skipping HTTP status check."
+    echo ""
+fi
+
 # =============================================================================
 # passive_refs.sh - Passive Subdomain Reconnaissance Reference Links
 # Usage: ./passive_refs.sh -u "varonis.com"
