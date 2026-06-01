@@ -4,6 +4,7 @@ This tool was devised as something that I think would be beneficial for a lot of
 phases of Reconnaissance that a Security Researcher has to perform:- to `Map out all the subdomains for a wildcard.`
 
 ![Tool Banner](/Sub_Recon.png)
+This Repo is maintained by [P4rC3L](https://github.com/P4rC3L) and [an-sh7](https://github.com/an-sh7).
 
 ### How to Use? 
 - Download the script, and give it executable permission using this command: `sudo chmod +x sub_recon.sh`
