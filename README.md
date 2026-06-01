@@ -14,4 +14,7 @@ phases of Reconnaissance that a Security Researcher has to perform:- to `Map out
 > You can use this script to facilitate your own projects. This is the permission that this script is open to public.
 ---
 - Fix_1.0: Added a check to detect the presence of the required tools on the User's system, and install them if unavailable.<br>This check is only performed once, when the script is run for the first time and is then skipped-over for better performance. Delete the `./.sub-recon_ran_already` file in the directory where the script was run initially to re-enable the check.<br>
-- Fix_1.2: Added a Banner and Some visual Loading bars. Also added a flag_script for testing purposes. It would be excluded later.
+- Fix_1.2: Added a Banner and Some visual Loading bars. Also added a flag_script for testing purposes. It would be excluded later.<br>
+- Fix_1.3: Stripped the URL so that the output files are separated. Ex:-<br> 
+> "https[:]//tesla.com" --> "tesla_com.txt"<br>
+> "https[:]//tesla.net" --> "tesla_net.txt"
