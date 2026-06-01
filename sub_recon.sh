@@ -140,142 +140,139 @@ print_banner
 
 # Show usage if no arguments provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 -u <domain> [--ch]"
-    echo "Example: $0 -u tesla.com --ch"
-    echo "  --ch : after recon, check the HTTP status of every subdomain found"
+    echo "Usage: $0 -u <domain> | -L <domains_file>"
+    echo "Examples:"
+    echo "  $0 -u tesla.com"
+    echo "  $0 -L scope.txt      # one in-scope domain per line"
     exit 1
 fi
 
-# --ch is a long option that getopts can't read, so pull it out of the args first.
-RUN_STATUS_CHECK=false
-ARGS=()
-for arg in "$@"; do
-    case "$arg" in
-        --ch) RUN_STATUS_CHECK=true ;;
-        *)    ARGS+=("$arg") ;;
-    esac
-done
-set -- "${ARGS[@]}"
-
-# Parse the -u flag to capture the target domain
-while getopts "u:" opt; do
+# Parse flags:
+#   -u <domain>        a single target domain
+#   -L <domains_file>  a file with one in-scope domain per line
+while getopts "u:L:" opt; do
     case $opt in
         u) DOMAIN="$OPTARG" ;;
-        *) echo "Invalid option. Usage: $0 -u <domain> [--ch]"; exit 1 ;;
+        L) DOMAIN_LIST="$OPTARG" ;;
+        *) echo "Invalid option. Usage: $0 -u <domain> | -L <domains_file>"; exit 1 ;;
     esac
 done
 
-# Exit if domain is still empty after parsing
-if [ -z "$DOMAIN" ]; then
-    echo "[!] Error: No domain provided. Use -u <domain>"
+# Build the list of in-scope domains to process (from -u and/or -L).
+TARGETS=()
+[ -n "$DOMAIN" ] && TARGETS+=("$DOMAIN")
+
+if [ -n "$DOMAIN_LIST" ]; then
+    if [ ! -f "$DOMAIN_LIST" ]; then
+        echo "[!] Error: domains file not found: $DOMAIN_LIST"
+        exit 1
+    fi
+    # Read the file line by line, skipping blank lines and #comments.
+    while read -r line; do
+        line="$(echo "$line" | tr -d '[:space:]')"   # strip whitespace
+        [ -z "$line" ] && continue
+        case "$line" in \#*) continue ;; esac
+        TARGETS+=("$line")
+    done < "$DOMAIN_LIST"
+fi
+
+# Exit if we ended up with no targets.
+if [ ${#TARGETS[@]} -eq 0 ]; then
+    echo "[!] Error: No domains provided. Use -u <domain> or -L <domains_file>"
     exit 1
 fi
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
-# Clean domain for filename creation
-CLEAN_DOMAIN=$(echo "$DOMAIN" \
-    | sed 's|^https\?://||' \
-    | sed 's|/$||' \
-    | tr '.' '_')
-
-# Output directory and file
+# All output lands here, one file per target domain (e.g. tesla_com.txt).
 OUTPUT_DIR="./sub_recon"
-OUTPUT_FILE="$OUTPUT_DIR/${CLEAN_DOMAIN}.txt"
-
-# Create the Output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
-# Clear any existing subdomains file so we start fresh each run
-> "$OUTPUT_FILE"
-
-echo ""
-echo "============================================="
-echo "   Subdomain Recon  |  Target: $DOMAIN"
-echo "============================================="
-echo ""
-
-# ── 1. Subfinder ─────────────────────────────────────────────────────────────
-
-echo "[*] Running subfinder on $DOMAIN ..."
-
-# -d  : target domain
-# -o  : write results to file (overwrites, so we redirect/append manually)
-# -silent : suppress banner/noise, only output subdomains
-subfinder -d "$DOMAIN" -silent >> "$OUTPUT_FILE" 2>/dev/null
-
-# Count how many lines subfinder added (approximate; file only has subfinder results at this point)
-SUBFINDER_COUNT=$(wc -l < "$OUTPUT_FILE")
-echo "[+] subfinder found  : $SUBFINDER_COUNT subdomains"
-echo ""
-
-# ── 2. Assetfinder ───────────────────────────────────────────────────────────
-
-echo "[*] Running assetfinder on $DOMAIN ..."
-
-# --subs-only : only return subdomains (skip related domains / wildcard entries)
-assetfinder --subs-only "$DOMAIN" >> "$OUTPUT_FILE" 2>/dev/null
-
-# Total lines in file so far; subtract previous count to get assetfinder's contribution
-TOTAL_AFTER_ASSET=$(wc -l < "$OUTPUT_FILE")
-ASSETFINDER_COUNT=$((TOTAL_AFTER_ASSET - SUBFINDER_COUNT))
-echo "[+] assetfinder found: $ASSETFINDER_COUNT subdomains"
-echo ""
-
-# ── 3. Sublist3r ─────────────────────────────────────────────────────────────
-
-echo "[*] Running sublist3r on $DOMAIN ..."
-
-# -d : target domain
-# -o : output file (sublist3r appends if file exists)
-# Sublist3r prints a lot of status info to stdout; redirect stderr to suppress errors
-sublist3r -d "$DOMAIN" -o /tmp/sublist3r_tmp.txt > /dev/null 2>&1
-
-# Append sublist3r results (from its temp file) into our master file
-if [ -f /tmp/sublist3r_tmp.txt ]; then
-    cat /tmp/sublist3r_tmp.txt >> "$OUTPUT_FILE"
-    rm /tmp/sublist3r_tmp.txt   # clean up the temp file
+# Label for the passive-resources footer further down.
+if [ ${#TARGETS[@]} -eq 1 ]; then
+    SCOPE_LABEL="${TARGETS[0]}"
+else
+    SCOPE_LABEL="${#TARGETS[@]} in-scope domains"
 fi
 
-TOTAL_AFTER_SUB=$(wc -l < "$OUTPUT_FILE")
-SUBLIST3R_COUNT=$((TOTAL_AFTER_SUB - TOTAL_AFTER_ASSET))
-echo "[+] sublist3r found  : $SUBLIST3R_COUNT subdomains"
-echo ""
+# ── Recon routine (runs once per target domain) ───────────────────────────────
+run_recon() {
+    local DOMAIN="$1"
 
-# ── Deduplication ─────────────────────────────────────────────────────────────
+    # Clean domain for filename creation (strip scheme/trailing slash, dots -> _)
+    local CLEAN_DOMAIN
+    CLEAN_DOMAIN=$(echo "$DOMAIN" \
+        | sed 's|^https\?://||' \
+        | sed 's|/$||' \
+        | tr '.' '_')
 
-# All three tools may return overlapping results.
-# Sort and remove duplicates, then write back to the same file.
-sort -u "$OUTPUT_FILE" -o "$OUTPUT_FILE"
+    # Per-domain output file; cleared so we start fresh each run.
+    local OUTPUT_FILE="$OUTPUT_DIR/${CLEAN_DOMAIN}.txt"
+    > "$OUTPUT_FILE"
 
-# ── Final Summary ─────────────────────────────────────────────────────────────
+    echo ""
+    echo "============================================="
+    echo "   Subdomain Recon  |  Target: $DOMAIN"
+    echo "============================================="
+    echo ""
 
-TOTAL_UNIQUE=$(wc -l < "$OUTPUT_FILE")
+    # ── 1. Subfinder ──────────────────────────────────────────────────────────
+    echo "[*] Running subfinder on $DOMAIN ..."
+    # -d : target domain | -silent : only output subdomains, no noise
+    subfinder -d "$DOMAIN" -silent >> "$OUTPUT_FILE" 2>/dev/null
+    local SUBFINDER_COUNT
+    SUBFINDER_COUNT=$(wc -l < "$OUTPUT_FILE")
+    echo "[+] subfinder found  : $SUBFINDER_COUNT subdomains"
+    echo ""
 
-echo "============================================="
-echo "   Recon Complete!"
-echo "---------------------------------------------"
-echo "   subfinder    : $SUBFINDER_COUNT"
-echo "   assetfinder  : $ASSETFINDER_COUNT"
-echo "   sublist3r    : $SUBLIST3R_COUNT"
-echo "---------------------------------------------"
-echo "   Total unique subdomains: $TOTAL_UNIQUE"
-echo "   Saved to : $OUTPUT_FILE"
-echo "============================================="
-echo ""
+    # ── 2. Assetfinder ────────────────────────────────────────────────────────
+    echo "[*] Running assetfinder on $DOMAIN ..."
+    # --subs-only : only return subdomains (skip related/wildcard entries)
+    assetfinder --subs-only "$DOMAIN" >> "$OUTPUT_FILE" 2>/dev/null
+    local TOTAL_AFTER_ASSET ASSETFINDER_COUNT
+    TOTAL_AFTER_ASSET=$(wc -l < "$OUTPUT_FILE")
+    ASSETFINDER_COUNT=$((TOTAL_AFTER_ASSET - SUBFINDER_COUNT))
+    echo "[+] assetfinder found: $ASSETFINDER_COUNT subdomains"
+    echo ""
 
-# ── HTTP Status Check (opt-in via --ch) ───────────────────────────────────────
-# When --ch is passed, hand the freshly-collected subdomains to status_check.sh,
-# which visits each host and reports its HTTP response code (200 / 404 / 503 ...).
-if [ "$RUN_STATUS_CHECK" = true ]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ -f "$SCRIPT_DIR/status_check.sh" ]; then
-        bash "$SCRIPT_DIR/status_check.sh" "$OUTPUT_FILE"
-    else
-        echo "[!] status_check.sh not found in $SCRIPT_DIR - skipping HTTP status check."
-        echo ""
+    # ── 3. Sublist3r ──────────────────────────────────────────────────────────
+    echo "[*] Running sublist3r on $DOMAIN ..."
+    # Sublist3r is noisy on stdout; silence it and read results from its -o file.
+    sublist3r -d "$DOMAIN" -o /tmp/sublist3r_tmp.txt > /dev/null 2>&1
+    if [ -f /tmp/sublist3r_tmp.txt ]; then
+        cat /tmp/sublist3r_tmp.txt >> "$OUTPUT_FILE"
+        rm /tmp/sublist3r_tmp.txt   # clean up the temp file
     fi
-fi
+    local TOTAL_AFTER_SUB SUBLIST3R_COUNT
+    TOTAL_AFTER_SUB=$(wc -l < "$OUTPUT_FILE")
+    SUBLIST3R_COUNT=$((TOTAL_AFTER_SUB - TOTAL_AFTER_ASSET))
+    echo "[+] sublist3r found  : $SUBLIST3R_COUNT subdomains"
+    echo ""
+
+    # ── Deduplication ─────────────────────────────────────────────────────────
+    # All three tools may overlap; sort -u keeps one copy of each subdomain.
+    sort -u "$OUTPUT_FILE" -o "$OUTPUT_FILE"
+
+    # ── Per-domain Summary ────────────────────────────────────────────────────
+    local TOTAL_UNIQUE
+    TOTAL_UNIQUE=$(wc -l < "$OUTPUT_FILE")
+    echo "============================================="
+    echo "   Recon Complete!  |  $DOMAIN"
+    echo "---------------------------------------------"
+    echo "   subfinder    : $SUBFINDER_COUNT"
+    echo "   assetfinder  : $ASSETFINDER_COUNT"
+    echo "   sublist3r    : $SUBLIST3R_COUNT"
+    echo "---------------------------------------------"
+    echo "   Total unique subdomains: $TOTAL_UNIQUE"
+    echo "   Saved to : $OUTPUT_FILE"
+    echo "============================================="
+    echo ""
+}
+
+# ── Run recon over every in-scope domain ──────────────────────────────────────
+for target in "${TARGETS[@]}"; do
+    run_recon "$target"
+done
 
 # =============================================================================
 # passive_refs.sh - Passive Subdomain Reconnaissance Reference Links
@@ -285,7 +282,7 @@ fi
 
 echo ""
 echo "============================================================="
-echo "   Passive Subdomain Resources  |  Target: $DOMAIN"
+echo "   Passive Subdomain Resources  |  Target: $SCOPE_LABEL"
 echo "============================================================="
 echo ""
 echo " Subdomains can also be found online, here are some of the resources preferred by the author:"
