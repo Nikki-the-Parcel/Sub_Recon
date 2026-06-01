@@ -1,4 +1,98 @@
-#!/bin/bash 
+#!/bin/bash
+
+# Run only on first execution
+SETUP_FLAG="./.sub-recon_ran_already"
+
+if [ ! -f "$SETUP_FLAG" ]; then
+    echo "First run detected. Running initial setup..."
+
+    install_go() {
+        if command -v go >/dev/null 2>&1; then
+            echo "go already present. Skipping..."
+        else
+            echo "Go not found. Installing..."
+
+            # Debian/Ubuntu
+            if command -v apt >/dev/null 2>&1; then
+                sudo apt update
+                sudo apt install -y golang-go
+
+            # Fedora/RHEL
+            elif command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y golang
+
+            # Arch
+            elif command -v pacman >/dev/null 2>&1; then
+                sudo pacman -Sy --noconfirm go
+
+            # macOS (Homebrew)
+            elif command -v brew >/dev/null 2>&1; then
+                brew install go
+
+            else
+                echo "Unsupported package manager. Install Go manually."
+                exit 1
+            fi
+
+            if command -v go >/dev/null 2>&1; then
+                echo "go installed..."
+            else
+                echo "Go installation failed."
+                exit 1
+            fi
+        fi
+
+        # Ensure Go binaries are accessible
+        export PATH="$PATH:$HOME/go/bin"
+    }
+
+    install_tool() {
+        local tool="$1"
+
+        if command -v "$tool" >/dev/null 2>&1; then
+            echo "$tool already present. Skipping..."
+        else
+            case "$tool" in
+                subfinder)
+                    go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+                    ;;
+                assetfinder)
+                    go install github.com/tomnomnom/assetfinder@latest
+                    ;;
+                sublist3r)
+                    sudo apt install -y sublist3r
+                    ;;
+                *)
+                    echo "Unknown tool: $tool"
+                    return 1
+                    ;;
+            esac
+
+            hash -r
+
+            if command -v "$tool" >/dev/null 2>&1; then
+                echo "$tool installed..."
+            else
+                echo "Failed to install $tool"
+            fi
+        fi
+    }
+
+    # Install Go first
+    install_go
+
+    # Install required tools
+    for tool in subfinder assetfinder sublist3r; do
+        install_tool "$tool"
+    done
+
+    # Create setup marker
+    touch "$SETUP_FLAG"
+    echo "Initial setup complete."
+
+else
+    echo "Setup already completed. Skipping installation checks."
+fi
 
 # =============================================================================
 # sub_recon.sh - Automated Subdomain Reconnaissance Script
