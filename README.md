@@ -10,7 +10,7 @@ This Repo is maintained by [P4rC3L](https://github.com/P4rC3L) and [an-sh7](http
 - Download the script, and give it executable permission using this command: `sudo chmod +x sub_recon.sh`
 - Run the file using the following command: `./sub_recon.sh -u <DOMAIN_NAME>`
 - A file named after the target (e.g. `tesla_com.txt`) would be created containing all the results found through automation. <br>Tools used: [`Subfinder`](https://github.com/projectdiscovery/subfinder), [`Assetfinder`](https://github.com/tomnomnom/assetfinder) & [`Sublist3r`](https://github.com/aboul3la/Sublist3r).
-- Once the subdomains are collected, the script automatically runs `status_check.sh`, which visits every discovered host (using `curl`) and prints its HTTP status code (`200`, `301`, `404`, `503`, ...) — colour-coded so you can tell live hosts from dead ones at a glance. These results are saved next to the list as `<domain>_status.txt` (e.g. `tesla_com_status.txt`).
+- Add the `--ch` switch (e.g. `./sub_recon.sh -u tesla.com --ch`) to also run `status_check.sh` after recon, which visits every discovered host (using `curl`) and prints its HTTP status code (`200`, `301`, `404`, `503`, ...) — colour-coded so you can tell live hosts from dead ones at a glance. These results are saved next to the list as `<domain>_status.txt` (e.g. `tesla_com_status.txt`). Without `--ch`, only subdomain collection runs.
 - Down below, you could find out some passive resources listed for other sources. This was done to ensure that the user is able to directly access the needed list with the minimum amount of headache.
 
 > You can use this script to facilitate your own projects. This is the permission that this script is open to public.
@@ -20,4 +20,4 @@ This Repo is maintained by [P4rC3L](https://github.com/P4rC3L) and [an-sh7](http
 - Fix_1.3: Stripped the URL so that the output files are separated. Ex:-<br> 
 > "https[:]//tesla.com" --> "tesla_com.txt"<br>
 > "https[:]//tesla.net" --> "tesla_net.txt"
-- Fix_1.4: Added `status_check.sh`. After recon finishes, every discovered subdomain is visited with `curl` and its HTTP response code is printed (colour-coded) and saved to `<domain>_status.txt`. This lets you quickly spot which hosts are live (`2xx`), redirecting (`3xx`), erroring (`4xx`/`5xx`) or unreachable (`000`).
+- Fix_1.4: Added `status_check.sh` behind the opt-in `--ch` switch. When you pass `--ch`, every discovered subdomain is visited with `curl` after recon and its HTTP response code is printed (colour-coded) and saved to `<domain>_status.txt`. This lets you quickly spot which hosts are live (`2xx`), redirecting (`3xx`), erroring (`4xx`/`5xx`) or unreachable (`000`).

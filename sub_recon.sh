@@ -140,16 +140,28 @@ print_banner
 
 # Show usage if no arguments provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 -u <domain>"
-    echo "Example: $0 -u tesla.com"
+    echo "Usage: $0 -u <domain> [--ch]"
+    echo "Example: $0 -u tesla.com --ch"
+    echo "  --ch : after recon, check the HTTP status of every subdomain found"
     exit 1
 fi
+
+# --ch is a long option that getopts can't read, so pull it out of the args first.
+RUN_STATUS_CHECK=false
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --ch) RUN_STATUS_CHECK=true ;;
+        *)    ARGS+=("$arg") ;;
+    esac
+done
+set -- "${ARGS[@]}"
 
 # Parse the -u flag to capture the target domain
 while getopts "u:" opt; do
     case $opt in
         u) DOMAIN="$OPTARG" ;;
-        *) echo "Invalid option. Usage: $0 -u <domain>"; exit 1 ;;
+        *) echo "Invalid option. Usage: $0 -u <domain> [--ch]"; exit 1 ;;
     esac
 done
 
@@ -252,15 +264,17 @@ echo "   Saved to : $OUTPUT_FILE"
 echo "============================================="
 echo ""
 
-# ── HTTP Status Check ─────────────────────────────────────────────────────────
-# Hand the freshly-collected subdomains to status_check.sh, which visits each
-# host and reports its HTTP response code (200 / 301 / 404 / 503 / ...).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/status_check.sh" ]; then
-    bash "$SCRIPT_DIR/status_check.sh" "$OUTPUT_FILE"
-else
-    echo "[!] status_check.sh not found in $SCRIPT_DIR - skipping HTTP status check."
-    echo ""
+# ── HTTP Status Check (opt-in via --ch) ───────────────────────────────────────
+# When --ch is passed, hand the freshly-collected subdomains to status_check.sh,
+# which visits each host and reports its HTTP response code (200 / 404 / 503 ...).
+if [ "$RUN_STATUS_CHECK" = true ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/status_check.sh" ]; then
+        bash "$SCRIPT_DIR/status_check.sh" "$OUTPUT_FILE"
+    else
+        echo "[!] status_check.sh not found in $SCRIPT_DIR - skipping HTTP status check."
+        echo ""
+    fi
 fi
 
 # =============================================================================
