@@ -161,9 +161,15 @@ fi
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
-# Output directory and file where all subdomains will be collected
-OUTPUT_DIR="./sub-output"
-OUTPUT_FILE="$OUTPUT_DIR/subdomains.txt"
+# Clean domain for filename creation
+CLEAN_DOMAIN=$(echo "$DOMAIN" \
+    | sed 's|^https\?://||' \
+    | sed 's|/$||' \
+    | tr '.' '_')
+
+# Output directory and file
+OUTPUT_DIR="./sub_recon"
+OUTPUT_FILE="$OUTPUT_DIR/${CLEAN_DOMAIN}.txt"
 
 # Create the Output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
