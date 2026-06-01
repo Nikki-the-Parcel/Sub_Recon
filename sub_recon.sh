@@ -289,9 +289,9 @@ echo ""
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 
-echo "============================================================="
-echo "  Tip: crt.sh and VirusTotal are the best starting points."
+echo "=================================================================="
+echo "  Tip: crt.sh and VirusTotal are some of the best starting points."
 echo "  These 4 are a good starting point for most beginners."
-echo "  Users can look for DNS, CT Records for more better OSINT."
-echo "============================================================="
+echo "  Users can look for DNS, CT Records for much better OSINT."
+echo "=================================================================="
 echo ""
