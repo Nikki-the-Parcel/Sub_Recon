@@ -9,7 +9,8 @@ This Repo is maintained by [P4rC3L](https://github.com/P4rC3L) and [an-sh7](http
 ### How to Use? 
 - Download the script, and give it executable permission using this command: `sudo chmod +x sub_recon.sh`
 - Run the file using the following command: `./sub_recon.sh -u <DOMAIN_NAME>`
-- A file `subdomains.txt` would be created containing all the results found through automation. <br>Tools used: [`Subfinder`](https://github.com/projectdiscovery/subfinder), [`Assetfinder`](https://github.com/tomnomnom/assetfinder) & [`Sublist3r`](https://github.com/aboul3la/Sublist3r).
+- To enumerate a whole scope at once, pass a file of in-scope domains with `-L`: `./sub_recon.sh -L scope.txt` (one domain per line; blank lines and `#comments` are ignored). The tool runs recon on each domain in turn and saves a separate output file for every one.
+- A file named after the target (e.g. `tesla_com.txt`) would be created containing all the results found through automation. <br>Tools used: [`Subfinder`](https://github.com/projectdiscovery/subfinder), [`Assetfinder`](https://github.com/tomnomnom/assetfinder) & [`Sublist3r`](https://github.com/aboul3la/Sublist3r).
 - Down below, you could find out some passive resources listed for other sources. This was done to ensure that the user is able to directly access the needed list with the minimum amount of headache.
 
 > You can use this script to facilitate your own projects. This is the permission that this script is open to public.
@@ -19,3 +20,4 @@ This Repo is maintained by [P4rC3L](https://github.com/P4rC3L) and [an-sh7](http
 - Fix_1.3: Stripped the URL so that the output files are separated. Ex:-<br> 
 > "https[:]//tesla.com" --> "tesla_com.txt"<br>
 > "https[:]//tesla.net" --> "tesla_net.txt"
+- Fix_1.4: Added the `-L` flag to pass a file of in-scope domains (one per line; blank lines and `#comments` are skipped). The tool loops over every domain in the list and saves a separate `<domain>.txt` for each.
