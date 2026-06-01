@@ -11,7 +11,7 @@
 # Show usage if no arguments provided
 if [ $# -eq 0 ]; then
     echo "Usage: $0 -u <domain>"
-    echo "Example: $0 -u varonis.com"
+    echo "Example: $0 -u tesla.com"
     exit 1
 fi
 
@@ -122,63 +122,40 @@ echo ""
 # Prints clickable/copyable URLs pre-filled with your target domain
 # =============================================================================
 
-# ── Argument Parsing ──────────────────────────────────────────────────────────
-
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 -u <domain>"
-    echo "Example: $0 -u varonis.com"
-    exit 1
-fi
-
-while getopts "u:" opt; do
-    case $opt in
-        u) DOMAIN="$OPTARG" ;;
-        *) echo "Invalid option. Usage: $0 -u <domain>"; exit 1 ;;
-    esac
-done
-
-if [ -z "$DOMAIN" ]; then
-    echo "[!] Error: No domain provided. Use -u <domain>"
-    exit 1
-fi
-
-# ── Output ────────────────────────────────────────────────────────────────────
-
 echo ""
 echo "============================================================="
 echo "   Passive Subdomain Resources  |  Target: $DOMAIN"
 echo "============================================================="
 echo ""
-echo " Subdomains can also be found online, here are some of the"
-echo " resources preferred by the author:"
+echo " Subdomains can also be found online, here are some of the resources preferred by the author:"
 echo ""
 
 # ── Core Four that I Personally Use  ──────────────────────────────────────────
 
 # 1. VirusTotal - Passive DNS, crawled URLs, subdomains from AV telemetry
 echo " 1. VirusTotal (Passive DNS + AV telemetry)"
-echo "    https://www.virustotal.com/gui/domain/$DOMAIN"
+echo "    https://www.virustotal.com/"
 echo ""
 # 2. Hurricane Electric BGP - DNS records, ASN info, reverse DNS
 echo " 2. Hurricane Electric BGP (DNS + ASN records)"
-echo "    https://bgp.he.net/dns/$DOMAIN"
+echo "    https://bgp.he.net/"
 echo ""
 
 # 3. SubdomainFinder c99 - Aggregates multiple passive sources
 echo " 3. SubdomainFinder c99 (Multi-source passive lookup)"
-echo "    https://subdomainfinder.c99.nl/scans/$DOMAIN"
+echo "    https://subdomainfinder.c99.nl/"
 echo ""
 
 # 4. crt.sh - Certificate Transparency logs (very reliable for new subdomains)
 echo " 4. crt.sh (Certificate Transparency logs)"
-echo "    https://crt.sh/?q=%25.$DOMAIN"
+echo "    https://crt.sh/"
 echo ""
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 
 echo "============================================================="
 echo "  Tip: crt.sh and VirusTotal are the best starting points."
-echo "  Shodan + Censys are gold for finding non-DNS exposed hosts."
-echo "  Wayback Machine often surfaces forgotten/decommissioned subs."
+echo "  These 4 are a good starting point for most beginners."
+echo "  Users can look for DNS, CT Records for more better OSINT."
 echo "============================================================="
 echo ""
