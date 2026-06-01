@@ -10,3 +10,5 @@ phases of Reconnaissance that a Security Researcher has to perform:- to `Map out
 - Down below, you could find out some passive resources listed for other sources. This was done to ensure that the user is able to directly access the needed list with the minimum amount of headache.
 
 > You can use this script to facilitate your own projects. This is the permission that this script is open to public.
+---
+- Fix_1.0: Added a check to detect the presence of the required tools on the User's system, and install them if unavailable.<br> This check is only performed once, when the script is run for the first time and is then skipped-over for better performance. Delete the `./.sub-recon_ran_already` file in the directory where the script was run initially to re-enable the check.
