@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # =============================================================================
 # sub_recon.sh - Automated Subdomain Reconnaissance Script
